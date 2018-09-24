@@ -121,7 +121,10 @@ async function getData4()
     }
   );
   
-  storeValue("Yesterday", "Test2", "TestValet");
+  storeValue("Yesterday2", "col1", "TestValet");
+  storeValue("Yesterday2", "col1", "TestValet2");
+  storeValue("Yesterday2", "col2", "TestValet");
+
   console.log("Value Returning: " + pv );
  
   console.log("Stored value is: " + getValue("Yesterday") );
