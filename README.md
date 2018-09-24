@@ -8,6 +8,7 @@ Use Google Cloud Functions for querying Google Analytics
 
 ## Installing and Running
 
+- service keys
 
 1. Install dependencies:
 
@@ -23,11 +24,12 @@ Use Google Cloud Functions for querying Google Analytics
 		gcloud functions describe handleHttp
 
 4. Configuration Variables (from the service key json)
-		project_id
-		client_email
-		private_key
-		gsutil mb gs://mcduck-ga-data
-		gsutil defacl set public-read gs://mcduck-ga-data
+		- project_id
+		- client_email
+		- private_key
+		- gsutil mb gs://abcd-data
+		- gsutil defacl set public-read gs://abcd-data
 
-Enable Cloud Datastore API
-Enable GA API
+5. Setup APIs 
+	- Enable Cloud Datastore API
+	- Enable GA API

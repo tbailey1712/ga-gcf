@@ -2,3 +2,7 @@ ga-gcf.sublime-project
 ga-gcf.sublime-workspace
 node_modules/
 package-lock.json
+npm-service-key.json
+github
+github.pub
+.gitignore
