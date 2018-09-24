@@ -13,9 +13,10 @@ Use Google Cloud Functions for querying Google Analytics
 
         npm install
 
-2. Run the tests:
+2. And the APIs:
 
-        npm test
+        npm install googleapis
+        npm install --save @google-cloud/storage
 
 3. Deploy
 		gcloud functions deploy handleHttp --runtime nodejs8 --trigger-http
@@ -25,3 +26,8 @@ Use Google Cloud Functions for querying Google Analytics
 		project_id
 		client_email
 		private_key
+		gsutil mb gs://mcduck-ga-data
+		gsutil defacl set public-read gs://mcduck-ga-data
+
+Enable Cloud Datastore API
+Enable GA API

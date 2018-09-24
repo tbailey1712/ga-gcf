@@ -1,5 +1,9 @@
 /**
  * Copyright 2018, McDuck Labs
+ *
+ * Deploy with:
+ * gcloud functions deploy handleHttp --runtime nodejs8 --trigger-http
+ *
  */
 
 'use strict';
@@ -15,12 +19,13 @@ function handleGET (req, res) {
   message = message + 'Project ID = ' + project_id + '<br>';
 
   var q = req.query.q;
-  message = message + 'Query Type q=' + q;
+  message = message + 'Query Type q=' + q + '<br>';
 
   switch (q) {
     case 'GA':
       console.log("handleGET: Query is GA");
-      getData();
+      var resp = getData4(); 
+      message = message + 'GA query returned: ' + resp + '<br>';
       break;
     default:
       console.log("handleGET: No Query Specified");
@@ -50,11 +55,11 @@ exports.handleHttp = (req, res) => {
 
   switch (req.method) {
     case 'GET':
-      console.log("helloMcDuck(): Incoming GET Request");
+      console.log("handleHttp(): Incoming GET Request");
       handleGET(req, res);
       break;
     case 'PUT':
-      console.log("helloMcDuck(): Incoming PUT Request");
+      console.log("handleHttp(): Incoming PUT Request");
       handlePUT(req, res);
       break;
     default:
@@ -65,25 +70,117 @@ exports.handleHttp = (req, res) => {
 };
 
 
-function getData() {
+async function getData4()
+{
+  var {google} = require('googleapis');
+  var scopes = 'https://www.googleapis.com/auth/analytics.readonly';
+  var viewID = process.env.view_id;
+  var analytics = google.analyticsreporting('v4');
 
-  const { google } = require('googleapis');
-  const scopes = 'https://www.googleapis.com/auth/analytics.readonly';
+  const service_account = require('./npm-service-key.json'); 
+  //var key = "-----BEGIN PRIVATE KEY-----n+ZG7UI/HR+spW\n-----END PRIVATE KEY-----\n"; 
+  //var jwtClient = new google.auth.JWT(process.env.client_email, null, key, scopes, null);
+  var jwtClient = new google.auth.JWT(service_account.client_email, null, service_account.private_key, scopes, null);
+  jwtClient.authorize();
+ 
+  
+  var req = {
+    reportRequests: [{
+      viewId: viewID,
+      dateRanges: { startDate: 'yesterday', endDate: 'yesterday', },
+      metrics: { expression: 'ga:pageviews' }
+    }],
+  };
+  
+  
+  var pv = -1;
+  
+  console.log("getData4(): Sending GA Request");
 
-  console.log('getData(): email=' + process.env.client_email + ' private_key=' + process.env.private_key);
+  analytics.reports.batchGet({
+      auth: jwtClient,
+      resource: req
+    },
+    function (err, response) {
+      if (err) {
+        console.log('Failed to get Report');
+        console.log(err);
+        return;
+      } 
 
-  const jwt = new google.auth.JWT(keys.client_email, null, keys.private_key, scopes);
-  const view_id = '65651086';
+      console.log('Query Success');
+      var data = response.data.reports[0].data;
+      /*  For showing all the props
+      for(var property in data) {
+        console.log(property + "=" + data[property]);
+      } */
+      console.log("Data=" + JSON.stringify(data, null, 4) );
+      pv = data.totals[0]["values"];
+      console.log("Pageviews=" + pv); 
+      storeValue("Yesterday", "Pageviews", pv.toString() );
+    }
+  );
+  
+  storeValue("Yesterday", "Test2", "TestValet");
+  console.log("Value Returning: " + pv );
+ 
+  console.log("Stored value is: " + getValue("Yesterday") );
 
-  const response = jwt.authorize();
-  const result = google.analytics('v3').data.ga.get({
-    'auth': jwt,
-    'ids': 'ga:' + view_id,
-    'start-date': '30daysAgo',
-    'end-date': 'today',
-    'metrics': 'ga:pageviews'
-  });
+  return pv;  
+}
 
-  console.log(JSON.stringify(response, null, 4));
+function storeValue(row, key, value)
+{
+  // KIND, KEY, VALUE
+
+  console.log("storeValue row=" + row + " key=" + key + " value=" + value);
+
+  const Datastore = require('@google-cloud/datastore');
+  const projectId = process.env.project_id;
+
+  const datastore = Datastore({ projectId: projectId });
+
+  const kind = 'GA';
+  const gcskey = datastore.key([kind, row]);
+
+  const entry = {
+    key: gcskey,
+    data: {
+      key : value
+    }
+  };
+
+  datastore.save(entry)
+    .then(() => console.log("storeValue Success.") )
+    .catch((err) => {
+      console.error(err);
+    });  
+
+}
+
+function getValue(row)
+{
+  console.log("getValue row=" + row);
+
+  const Datastore = require('@google-cloud/datastore');
+  const projectId = process.env.project_id;
+
+  const datastore = Datastore({ projectId: projectId });
+
+  const kind = 'GA';
+  const gcskey = datastore.key([kind, row]);
+
+  return datastore.get(gcskey)
+    .then(([entity]) => {
+      // The get operation will not fail for a non-existent entity, it just
+      // returns an empty dictionary.
+      if (!entity) {
+        throw new Error(`No entity found for key ${key.path.join('/')}.`);
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      return Promise.reject(err);
+    });  
 }
 
